@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cluedo Tracker</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1e2127;
+    --line: #2c3037;
+    --accent: #c9a24b;
+    --accent-soft: #8a6f2f;
+    --text: #e9e7e2;
+    --muted: #8b8f98;
+    --red: #b5504f;
+    --green: #4f9b6e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  button {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  button:active { transform: scale(0.97); }
+  .add-player {
+    display: flex;
+    gap: 6px;
+  }
+  input[type=text] {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    width: 140px;
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block;
+  }
+  .dot.empty { border: 1px solid var(--line); }
+  .dot.out { background: var(--red); }
+  .dot.has { background: var(--green); }
+  .dot.maybe { background: var(--accent); }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 0;
+    text-align: center;
+  }
+  th {
+    background: var(--panel);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 8px 4px;
+    position: sticky;
+    top: 0;
+  }
+  .cat-header td {
+    background: #23262c;
+    color: var(--muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+    text-align: left;
+    border-left: none;
+    border-right: none;
+  }
+  .item-name {
+    text-align: left;
+    padding: 8px 10px !important;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    background: var(--panel);
+    position: sticky;
+    left: 0;
+  }
+  .player-col-name {
+    min-width: 64px;
+  }
+  .cell {
+    width: 44px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 1rem;
+    user-select: none;
+  }
+  .cell.empty { background: transparent; }
+  .cell.out { background: rgba(181, 80, 79, 0.18); color: var(--red); }
+  .cell.has { background: rgba(79, 155, 110, 0.18); color: var(--green); }
+  .cell.maybe { background: rgba(201, 162, 75, 0.18); color: var(--accent); }
+
+  .remove-player {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+
+  .notes-section {
+    margin-top: 20px;
+  }
+  .notes-section h2 {
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .footer-note {
+    color: var(--muted);
+    font-size: 0.72rem;
+    margin-top: 18px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<h1>🔍 Cluedo Tracker</h1>
+<div class="sub">Tap a cell to cycle: blank → ruled out → maybe → has card. Tap "Envelope" column for your own deduction.</div>
+
+<div class="legend">
+  <span><i class="dot empty"></i> Unknown</span>
+  <span><i class="dot out"></i> Ruled out (they don't have it)</span>
+  <span><i class="dot maybe"></i> Maybe</span>
+  <span><i class="dot has"></i> Confirmed has it</span>
+</div>
+
+<div class="controls">
+  <div class="add-player">
+    <input type="text" id="newPlayerName" placeholder="Player name" maxlength="12">
+    <button onclick="addPlayer()">+ Add Player</button>
+  </div>
+  <button onclick="clearEverything()">Clear Everything</button>
+</div>
+
+<div class="table-wrap">
+  <table id="trackerTable">
+    <thead>
+      <tr id="headerRow">
+        <th class="item-name">Card</th>
+        <th class="player-col-name">Envelope</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="notes-section">
+  <h2>Notes</h2>
+  <textarea id="notesArea" placeholder="Free notes, suggestions made, who showed what, hunches..."></textarea>
+</div>
+
+<div class="footer-note">
+  Runs entirely in your browser — nothing is uploaded or saved anywhere online. Your board and notes are automatically saved to this browser's local storage, so closing or reloading the tab won't lose your progress. Use "Clear Everything" to wipe it and start a fresh game.
+</div>
+
+<script>
+const CATEGORIES = {
+  "Suspects": ["Miss Scarlett", "Colonel Mustard", "Mrs White", "Reverend Green", "Mrs Peacock", "Professor Plum"],
+  "Weapons": ["Candlestick", "Dagger", "Lead Pipe", "Revolver", "Rope", "Spanner"],
+  "Rooms": ["Kitchen", "Ballroom", "Conservatory", "Dining Room", "Billiard Room", "Library", "Lounge", "Hall", "Study"]
+};
+
+const STATES = ["empty", "out", "maybe", "has"];
+const SYMBOLS = { empty: "", out: "✕", maybe: "?", has: "●" };
+
+const STORAGE_KEY = "cluedoTrackerState";
+
+let players = ["P1", "P2"];
+// board[itemName] = { "Envelope": state, "P1": state, ... }
+let board = {};
+
+function initBoard() {
+  board = {};
+  Object.values(CATEGORIES).flat().forEach(item => {
+    board[item] = { "Envelope": "empty" };
+    players.forEach(p => board[item][p] = "empty");
+  });
+}
+
+function saveState() {
+  try {
+    const data = { players, board, notes: document.getElementById("notesArea").value };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn("Could not save Cluedo tracker state:", e);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || !data.players || !data.board) return false;
+    players = data.players;
+    board = data.board;
+    // Ensure every item/player combo exists in case categories changed
+    Object.values(CATEGORIES).flat().forEach(item => {
+      if (!board[item]) board[item] = { "Envelope": "empty" };
+      if (board[item]["Envelope"] === undefined) board[item]["Envelope"] = "empty";
+      players.forEach(p => {
+        if (board[item][p] === undefined) board[item][p] = "empty";
+      });
+    });
+    if (typeof data.notes === "string") {
+      document.getElementById("notesArea").value = data.notes;
+    }
+    return true;
+  } catch (e) {
+    console.warn("Could not load Cluedo tracker state:", e);
+    return false;
+  }
+}
+
+function render() {
+  const headerRow = document.getElementById("headerRow");
+  headerRow.innerHTML = '<th class="item-name">Card</th><th class="player-col-name">Envelope</th>';
+  players.forEach((p, idx) => {
+    const th = document.createElement("th");
+    th.className = "player-col-name";
+    th.innerHTML = p + ' <button class="remove-player" onclick="removePlayer(' + idx + ')">✕</button>';
+    headerRow.appendChild(th);
+  });
+
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  Object.entries(CATEGORIES).forEach(([cat, items]) => {
+    const catRow = document.createElement("tr");
+    catRow.className = "cat-header";
+    const catCell = document.createElement("td");
+    catCell.colSpan = 2 + players.length;
+    catCell.textContent = cat;
+    catRow.appendChild(catCell);
+    tbody.appendChild(catRow);
+
+    items.forEach(item => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      nameCell.className = "item-name";
+      nameCell.textContent = item;
+      row.appendChild(nameCell);
+
+      const envCell = makeCell(item, "Envelope");
+      row.appendChild(envCell);
+
+      players.forEach(p => {
+        row.appendChild(makeCell(item, p));
+      });
+
+      tbody.appendChild(row);
+    });
+  });
+}
+
+function makeCell(item, who) {
+  const td = document.createElement("td");
+  const state = board[item][who];
+  td.className = "cell " + state;
+  td.textContent = SYMBOLS[state];
+  td.onclick = () => cycleCell(item, who, td);
+  return td;
+}
+
+function cycleCell(item, who, td) {
+  const current = board[item][who];
+  const nextIdx = (STATES.indexOf(current) + 1) % STATES.length;
+  const next = STATES[nextIdx];
+  board[item][who] = next;
+  td.className = "cell " + next;
+  td.textContent = SYMBOLS[next];
+  saveState();
+}
+
+function addPlayer() {
+  const input = document.getElementById("newPlayerName");
+  const name = input.value.trim();
+  if (!name) return;
+  if (players.includes(name)) { input.value = ""; return; }
+  players.push(name);
+  Object.keys(board).forEach(item => { board[item][name] = "empty"; });
+  input.value = "";
+  render();
+  saveState();
+}
+
+function removePlayer(idx) {
+  const name = players[idx];
+  players.splice(idx, 1);
+  Object.keys(board).forEach(item => { delete board[item][name]; });
+  render();
+  saveState();
+}
+
+function clearEverything() {
+  if (confirm("Clear everything? This wipes all marks, players, and notes for a fresh game.")) {
+    players = ["P1", "P2"];
+    initBoard();
+    document.getElementById("notesArea").value = "";
+    render();
+    saveState();
+  }
+}
+
+const hadSavedState = loadState();
+if (!hadSavedState) {
+  initBoard();
+}
+render();
+
+document.getElementById("notesArea").addEventListener("input", saveState);
+</script>
+
+</body>
+</html>
